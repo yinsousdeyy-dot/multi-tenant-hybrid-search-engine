@@ -20,3 +20,5 @@ export async function getEmbedding(text) {
   // OpenAI returns a regular JS array of numbers.
   return resp.data.data[0].embedding;
 }
+
+// If you prefer a self‑hosted model – replace the body with a call to http://localhost:11434/api/embeddings (Ollama) and keep the same shape.
