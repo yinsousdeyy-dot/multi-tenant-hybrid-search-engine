@@ -1,0 +1,22 @@
+{
+  "name": "multi-tenant-hybrid-search-engine",
+  "version": "1.0.0",
+  "description": "Multi-tenant hybrid search engine with PostgreSQL pgvector and tenant-aware RLS",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "morgan": "^1.10.0",
+    "openai": "^4.67.0",
+    "pg": "^8.12.0"
+  }
+}
