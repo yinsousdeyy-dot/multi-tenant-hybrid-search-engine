@@ -1,26 +1,19 @@
-// generate embeddings (OpenAI example)
-
-import OpenAI from "openai";
 import dotenv from "dotenv";
-
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const EMBED_URL = process.env.EMBED_SERVICE_URL || "http://localhost:8001/embed";
 
-/**
- * Returns an embedding array for the provided text.
- */
 export async function getEmbedding(text) {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set");
-  }
-
-  const response = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: text,
+  const response = await fetch(EMBED_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
   });
 
-  return response.data[0].embedding;
+  if (!response.ok) {
+    throw new Error(`Embedding service failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.embedding;
 }

@@ -13,16 +13,28 @@ services:
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./RSL.sql:/docker-entrypoint-initdb.d/02-rls.sql:ro
 
+  embed-service:
+    image: python:3.12-slim
+    working_dir: /app
+    command: bash -lc "pip install --no-cache-dir fastapi uvicorn sentence-transformers && python -m uvicorn embed_service:app --host 0.0.0.0 --port 8001"
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
   app:
     build:
       context: .
     depends_on:
       - db
+      - embed-service
     restart: unless-stopped
     env_file:
       - .env
     environment:
       DATABASE_URL: postgres://postgres_user:secret_password@db:5432/search_engine_db
+      EMBED_SERVICE_URL: http://embed-service:8001/embed
       PORT: "3000"
     ports:
       - "3000:3000"
