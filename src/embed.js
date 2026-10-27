@@ -1,24 +1,26 @@
 // generate embeddings (OpenAI example)
 
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-const config = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(config);
 
 /**
- * Returns a Float32Array (or plain Array<number>) of size 1536 for the given text.
+ * Returns an embedding array for the provided text.
  */
 export async function getEmbedding(text) {
-  const resp = await openai.createEmbedding({
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+
+  const response = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: text,
   });
-  // OpenAI returns a regular JS array of numbers.
-  return resp.data.data[0].embedding;
-}
 
-// If you prefer a self‑hosted model – replace the body with a call to http://localhost:11434/api/embeddings (Ollama) and keep the same shape.
+  return response.data[0].embedding;
+}

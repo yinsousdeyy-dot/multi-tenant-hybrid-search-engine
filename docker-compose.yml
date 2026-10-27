@@ -1,0 +1,31 @@
+services:
+  db:
+    image: pgvector/pgvector:pg14
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: secret_password
+      POSTGRES_DB: search_engine_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./RSL.sql:/docker-entrypoint-initdb.d/02-rls.sql:ro
+
+  app:
+    build:
+      context: .
+    depends_on:
+      - db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://postgres_user:secret_password@db:5432/search_engine_db
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pg_data:
