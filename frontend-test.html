@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hybrid Search Frontend Test</title>
+    <style>
+      :root {
+        --bg: #111827;
+        --panel: #1f2937;
+        --panel-2: #111827;
+        --text: #f9fafb;
+        --muted: #9ca3af;
+        --primary: #3b82f6;
+        --primary-dark: #2563eb;
+        --good: #10b981;
+        --danger: #ef4444;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 980px;
+        margin: 32px auto;
+        padding: 24px;
+      }
+
+      h1 {
+        margin-bottom: 24px;
+        font-size: 2rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      input, textarea, button {
+        width: 100%;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        font-size: 14px;
+      }
+
+      input, textarea {
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 10px 12px;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      button {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover { background: var(--primary-dark); }
+
+      .secondary {
+        background: transparent;
+        border: 1px solid #4b5563;
+      }
+
+      .status {
+        margin-top: 12px;
+        min-height: 24px;
+        color: var(--muted);
+      }
+
+      .status.error { color: var(--danger); }
+      .status.success { color: var(--good); }
+
+      #results {
+        margin-top: 16px;
+        white-space: pre-wrap;
+        background: #0b1220;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        padding: 16px;
+        overflow: auto;
+      }
+
+      @media (max-width: 760px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Multi-tenant Hybrid Search Frontend</h1>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Insert document</h2>
+
+          <label for="tenantIdInsert">Tenant ID</label>
+          <input id="tenantIdInsert" value="11111111-1111-1111-1111-111111111111" />
+
+          <label for="title">Title</label>
+          <input id="title" value="Customer refund policy" />
+
+          <label for="body">Body</label>
+          <textarea id="body">Refunds are processed within 7 business days for eligible purchases.</textarea>
+
+          <label for="meta">Meta JSON</label>
+          <textarea id="meta">{ "category": "support" }</textarea>
+
+          <button id="insertBtn">Insert document</button>
+          <div id="insertStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2>Search</h2>
+
+          <label for="tenantIdSearch">Tenant ID</label>
+          <input id="tenantIdSearch" value="11111111-1111-1111-1111-111111111111" />
+
+          <label for="query">Query</label>
+          <input id="query" value="refund policy" />
+
+          <label for="bm25Weight">BM25 weight</label>
+          <input id="bm25Weight" value="0.6" />
+
+          <button id="searchBtn">Search</button>
+          <button id="healthBtn" class="secondary">Check API health</button>
+          <div id="searchStatus" class="status"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px;">
+        <h2>Response</h2>
+        <pre id="results">{}</pre>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = 'http://localhost:3000';
+
+      function setStatus(el, message, type = '') {
+        el.textContent = message;
+        el.className = 'status';
+        if (type) el.classList.add(type);
+      }
+
+      function renderJson(value) {
+        document.getElementById('results').textContent = JSON.stringify(value, null, 2);
+      }
+
+      async function apiFetch(path, options = {}) {
+        const res = await fetch(`${API_BASE}${path}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+          }
+        });
+
+        const text = await res.text();
+        let data;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          data = text;
+        }
+
+        if (!res.ok) {
+          throw new Error(data?.error || data || `HTTP ${res.status}`);
+        }
+
+        return data;
+      }
+
+      document.getElementById('insertBtn').addEventListener('click', async () => {
+        const tenantId = document.getElementById('tenantIdInsert').value.trim();
+        const title = document.getElementById('title').value.trim();
+        const body = document.getElementById('body').value.trim();
+        let meta = document.getElementById('meta').value.trim();
+
+        try {
+          meta = meta ? JSON.parse(meta) : {};
+          const result = await apiFetch('/api/documents', {
+            method: 'POST',
+            headers: {
+              'x-tenant-id': tenantId
+            },
+            body: JSON.stringify({ title, body, meta })
+          });
+          setStatus(document.getElementById('insertStatus'), 'Document inserted successfully', 'success');
+          renderJson(result);
+        } catch (err) {
+          setStatus(document.getElementById('insertStatus'), err.message, 'error');
+          renderJson({ error: err.message });
+        }
+      });
+
+      document.getElementById('searchBtn').addEventListener('click', async () => {
+        const tenantId = document.getElementById('tenantIdSearch').value.trim();
+        const query = document.getElementById('query').value.trim();
+        const bm25Weight = document.getElementById('bm25Weight').value.trim();
+
+        try {
+          const url = `/api/documents/search?q=${encodeURIComponent(query)}&bm25Weight=${encodeURIComponent(bm25Weight)}`;
+          const result = await apiFetch(url, {
+            method: 'GET',
+            headers: {
+              'x-tenant-id': tenantId
+            }
+          });
+          setStatus(document.getElementById('searchStatus'), 'Search completed', 'success');
+          renderJson(result);
+        } catch (err) {
+          setStatus(document.getElementById('searchStatus'), err.message, 'error');
+          renderJson({ error: err.message });
+        }
+      });
+
+      document.getElementById('healthBtn').addEventListener('click', async () => {
+        try {
+          const result = await apiFetch('/health');
+          setStatus(document.getElementById('searchStatus'), 'API is healthy', 'success');
+          renderJson(result);
+        } catch (err) {
+          setStatus(document.getElementById('searchStatus'), err.message, 'error');
+          renderJson({ error: err.message });
+        }
+      });
+    </script>
+  </body>
+</html>
